@@ -1,11 +1,18 @@
 package com.example.demo_rabbit_received_remake.config;
 
 import com.example.demo_rabbit_received_remake.consumer.ReceiverManager;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.ShutdownListener;
+import com.rabbitmq.client.ShutdownSignalException;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
+import org.springframework.amqp.rabbit.connection.ChannelListener;
+import org.springframework.amqp.rabbit.connection.Connection;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.amqp.rabbit.listener.adapter.MessageListenerAdapter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -68,6 +75,26 @@ public class RabbitConfig {
     public ConnectionFactory connectionFactory() {
         CachingConnectionFactory connectionFactory = new CachingConnectionFactory();
         connectionFactory.setHost("localhost");
+        connectionFactory.setRequestedHeartBeat(10);
+        RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
+        connectionFactory.addChannelListener(new ChannelListener() {
+            boolean isHeartbeatAlertSent = false;
+            @Override
+            public void onCreate(Channel channel, boolean transactional) {
+                channel.addShutdownListener(new ShutdownListener() {
+                    @Override
+                    public void shutdownCompleted(ShutdownSignalException cause) {
+                        if (!isHeartbeatAlertSent){
+                            System.out.println("checkHeartBeat: " + cause.getMessage() );
+                            rabbitTemplate.setExchange(RabbitConfig.exchangeName);
+                            rabbitTemplate.setRoutingKey(RabbitConfig.routingKey);
+                            rabbitTemplate.convertAndSend(RabbitConfig.exchangeName,RabbitConfig.routingKey,"queue2 báo ngưng hoạt động");
+                            isHeartbeatAlertSent = true;
+                        }
+                    }
+                });
+            }
+        });
         connectionFactory.setPort(5672);
         connectionFactory.setUsername("guest");
         connectionFactory.setPassword("guest");

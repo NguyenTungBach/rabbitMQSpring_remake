@@ -12,8 +12,8 @@ public class ReceiverManager {
     @Autowired
     RabbitTemplate rabbitTemplate;
 
-
     public void receiveMessage2(String message){
         log.info("tin nhan: "+ message);
     }
+
 }
