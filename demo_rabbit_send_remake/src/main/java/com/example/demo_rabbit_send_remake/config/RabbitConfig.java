@@ -1,8 +1,12 @@
 package com.example.demo_rabbit_send_remake.config;
 
 import com.example.demo_rabbit_send_remake.consumer.ReceiverManager;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.ShutdownListener;
+import com.rabbitmq.client.ShutdownSignalException;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
+import org.springframework.amqp.rabbit.connection.ChannelListener;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.amqp.rabbit.listener.adapter.MessageListenerAdapter;
@@ -62,6 +66,19 @@ public class RabbitConfig {
     public ConnectionFactory connectionFactory() {
         CachingConnectionFactory connectionFactory = new CachingConnectionFactory();
         connectionFactory.setHost("localhost");
+        connectionFactory.setRequestedHeartBeat(10);
+        connectionFactory.addChannelListener(new ChannelListener() {
+            @Override
+            public void onCreate(Channel channel, boolean transactional) {
+                channel.addShutdownListener(new ShutdownListener() {
+                    @Override
+                    public void shutdownCompleted(ShutdownSignalException cause) {
+                        // handle shutdown event here
+                        System.out.println("checkHeartBeat: " + cause.getMessage() );
+                    }
+                });
+            }
+        });
         connectionFactory.setPort(5672);
         connectionFactory.setUsername("guest");
         connectionFactory.setPassword("guest");
